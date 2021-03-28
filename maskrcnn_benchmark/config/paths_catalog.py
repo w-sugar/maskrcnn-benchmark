@@ -7,6 +7,22 @@ from copy import deepcopy
 class DatasetCatalog(object):
     DATA_DIR = "datasets"
     DATASETS = {
+        "virat_ThreePart_train": {
+            "img_dir": "virat/",
+            "ann_file": "meva_nist_coco_train.json"
+        },
+        "virat_ThreePart_valid": {
+            "img_dir": "virat/",
+            "ann_file": "meva_nist_coco_valid.json"
+        },
+        "coco_mmdet_train":{
+            "img_dir": "coco/bt",
+            "ann_file": "coco/bt.json"
+        },
+        "coco_mmdet_val":{
+            "img_dir": "coco/bt",
+            "ann_file": "coco/bt.json"
+        },
         "coco_2017_train": {
             "img_dir": "coco/train2017",
             "ann_file": "coco/annotations/instances_train2017.json"
@@ -161,6 +177,17 @@ class DatasetCatalog(object):
             return dict(
                 factory="COCODataset",
                 args=args,
+            )
+        elif "virat" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                root=os.path.join(data_dir, attrs["img_dir"]),
+                ann_file=os.path.join(data_dir, attrs["ann_file"]),
+            )
+            return dict(
+                factory="COCODataset_VIRAT",
+                args=args
             )
         elif "voc" in name:
             data_dir = DatasetCatalog.DATA_DIR

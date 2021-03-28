@@ -12,6 +12,7 @@ from maskrcnn_benchmark.data import make_data_loader
 from maskrcnn_benchmark.utils.comm import get_world_size, synchronize
 from maskrcnn_benchmark.utils.metric_logger import MetricLogger
 from maskrcnn_benchmark.engine.inference import inference
+from maskrcnn_benchmark.utils.visualize import print_dict
 
 from apex import amp
 
@@ -52,7 +53,16 @@ def do_train(
     checkpoint_period,
     test_period,
     arguments,
+    distributed,
+    vis_port
 ):
+    from visdom import Visdom
+    vis = None
+    if distributed:
+        if dist.get_rank() == 0:
+            vis = Visdom(server='http://127.0.0.1', port=vis_port)
+    else:
+        vis = Visdom(server='http://127.0.0.1', port=vis_port)
     logger = logging.getLogger("maskrcnn_benchmark.trainer")
     logger.info("Start training")
     meters = MetricLogger(delimiter="  ")
@@ -123,6 +133,12 @@ def do_train(
                     memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
                 )
             )
+
+            # 更新 loss 曲线
+            loss_dict_print = loss_dict_reduced
+            loss_dict_print['loss'] = losses_reduced
+            print_dict(vis, loss_dict_print, iteration, need_plot=True)
+
         if iteration % checkpoint_period == 0:
             checkpointer.save("model_{:07d}".format(iteration), **arguments)
         if data_loader_val is not None and test_period > 0 and iteration % test_period == 0:

@@ -26,7 +26,7 @@ class ImageList(object):
         return ImageList(cast_tensor, self.image_sizes)
 
 
-def to_image_list(tensors, size_divisible=0):
+def to_image_list(tensors, size_divisible=0, if_clip=False):
     """
     tensors can be an ImageList, a torch.Tensor or
     an iterable of Tensors. It can't be a numpy array.
@@ -56,15 +56,20 @@ def to_image_list(tensors, size_divisible=0):
 
             stride = size_divisible
             max_size = list(max_size)
-            max_size[1] = int(math.ceil(max_size[1] / stride) * stride)
-            max_size[2] = int(math.ceil(max_size[2] / stride) * stride)
+            if not if_clip:
+                max_size[1] = int(math.ceil(max_size[1] / stride) * stride)
+                max_size[2] = int(math.ceil(max_size[2] / stride) * stride)
+            else:
+                max_size[2] = int(math.ceil(max_size[2] / stride) * stride)
+                max_size[3] = int(math.ceil(max_size[3] / stride) * stride)
             max_size = tuple(max_size)
-
         batch_shape = (len(tensors),) + max_size
         batched_imgs = tensors[0].new(*batch_shape).zero_()
         for img, pad_img in zip(tensors, batched_imgs):
-            pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
-
+            if not if_clip:
+                pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
+            else:
+                pad_img[: img.shape[0], : img.shape[1], : img.shape[2], : img.shape[3]].copy_(img)
         image_sizes = [im.shape[-2:] for im in tensors]
 
         return ImageList(batched_imgs, image_sizes)

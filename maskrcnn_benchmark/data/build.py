@@ -12,7 +12,7 @@ from . import datasets as D
 from . import samplers
 
 from .collate_batch import BatchCollator, BBoxAugCollator
-from .transforms import build_transforms
+from .transforms import build_transforms, build_transforms3d
 
 
 def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
@@ -36,7 +36,7 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
         args = data["args"]
         # for COCODataset, we want to remove images without annotations
         # during training
-        if data["factory"] == "COCODataset":
+        if data["factory"] == "COCODataset" or data["factory"] == "COCODataset_VIRAT":
             args["remove_images_without_annotations"] = is_train
         if data["factory"] == "PascalVOCDataset":
             args["use_difficult"] = not is_train
@@ -152,9 +152,17 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
     dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
 
     # If bbox aug is enabled in testing, simply set transforms to None and we will apply transforms later
-    transforms = None if not is_train and cfg.TEST.BBOX_AUG.ENABLED else build_transforms(cfg, is_train)
+    # transforms = None if not is_train and cfg.TEST.BBOX_AUG.ENABLED else build_transforms(cfg, is_train)
+    if not is_train and cfg.TEST.BBOX_AUG.ENABLED:
+        transforms = None
+    else:
+        if cfg.DATASETS.TRANSTYPE == 'transforms2d':
+            transforms = build_transforms(cfg, is_train)
+        elif cfg.DATASETS.TRANSTYPE == 'transforms3d':
+            transforms = build_transforms3d(cfg, is_train)
+        else:
+            raise ValueError("TRANSTYPE is wrong!")
     datasets = build_dataset(dataset_list, transforms, DatasetCatalog, is_train or is_for_period)
-
     if is_train:
         # save category_id to label name mapping
         save_labels(datasets, cfg.OUTPUT_DIR)
@@ -166,7 +174,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
             dataset, sampler, aspect_grouping, images_per_gpu, num_iters, start_iter
         )
         collator = BBoxAugCollator() if not is_train and cfg.TEST.BBOX_AUG.ENABLED else \
-            BatchCollator(cfg.DATALOADER.SIZE_DIVISIBILITY)
+            BatchCollator(cfg.DATALOADER.SIZE_DIVISIBILITY, cfg.DATASETS.TRANSTYPE == 'transforms3d')
         num_workers = cfg.DATALOADER.NUM_WORKERS
         data_loader = torch.utils.data.DataLoader(
             dataset,

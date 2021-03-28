@@ -171,6 +171,7 @@ def _rename_conv_weights_for_deformable_conv_layers(state_dict, cfg):
 
 
 _C2_STAGE_NAMES = {
+    "r2plus1d-34": ["1.2", "2.3", "3.5", "4.2"],
     "R-50": ["1.2", "2.3", "3.5", "4.2"],
     "R-101": ["1.2", "2.3", "3.22", "4.2"],
     "R-152": ["1.2", "2.7", "3.35", "4.2"],
@@ -178,7 +179,7 @@ _C2_STAGE_NAMES = {
 
 C2_FORMAT_LOADER = Registry()
 
-
+@C2_FORMAT_LOADER.register("r2plus1d-34-FPN")
 @C2_FORMAT_LOADER.register("R-50-C4")
 @C2_FORMAT_LOADER.register("R-50-C5")
 @C2_FORMAT_LOADER.register("R-101-C4")

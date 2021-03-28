@@ -33,7 +33,7 @@ except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
 
-def train(cfg, local_rank, distributed):
+def train(cfg, local_rank, distributed, vis_port):
     model = build_detection_model(cfg)
     device = torch.device(cfg.MODEL.DEVICE)
     model.to(device)
@@ -92,6 +92,8 @@ def train(cfg, local_rank, distributed):
         checkpoint_period,
         test_period,
         arguments,
+        distributed,
+        vis_port
     )
 
     return model
@@ -140,6 +142,7 @@ def main():
         type=str,
     )
     parser.add_argument("--local_rank", type=int, default=0)
+    parser.add_argument("--vis_port", type=int, default=8097)
     parser.add_argument(
         "--skip-test",
         dest="skip_test",
@@ -191,7 +194,7 @@ def main():
     # save overloaded model config in the output directory
     save_config(cfg, output_config_path)
 
-    model = train(cfg, args.local_rank, args.distributed)
+    model = train(cfg, args.local_rank, args.distributed, args.vis_port)
 
     if not args.skip_test:
         run_test(cfg, model, args.distributed)
