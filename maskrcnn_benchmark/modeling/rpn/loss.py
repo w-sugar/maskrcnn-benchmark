@@ -41,7 +41,7 @@ class RPNLossComputation(object):
 
     def match_targets_to_anchors(self, anchor, target, copied_fields=[]):
         match_quality_matrix = boxlist_iou(target, anchor)
-        matched_idxs = self.proposal_matcher(match_quality_matrix)
+        matched_idxs, _ = self.proposal_matcher(match_quality_matrix)
         # RPN doesn't need any fields from target
         # for creating the labels, so clear them all
         target = target.copy_with_fields(copied_fields)

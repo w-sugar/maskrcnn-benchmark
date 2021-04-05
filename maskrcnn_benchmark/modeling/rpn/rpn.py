@@ -9,6 +9,7 @@ from maskrcnn_benchmark.modeling.rpn.retinanet.retinanet import build_retinanet
 from .loss import make_rpn_loss_evaluator
 from .anchor_generator import make_anchor_generator
 from .inference import make_rpn_postprocessor
+from .inference_v2 import make_rpn_postprocessorV2
 
 
 class RPNHeadConvRegressor(nn.Module):
@@ -126,8 +127,8 @@ class RPNModule(torch.nn.Module):
 
         rpn_box_coder = BoxCoder(weights=(1.0, 1.0, 1.0, 1.0))
 
-        box_selector_train = make_rpn_postprocessor(cfg, rpn_box_coder, is_train=True)
-        box_selector_test = make_rpn_postprocessor(cfg, rpn_box_coder, is_train=False)
+        box_selector_train = make_rpn_postprocessorV2(cfg, rpn_box_coder, is_train=True)
+        box_selector_test = make_rpn_postprocessorV2(cfg, rpn_box_coder, is_train=False)
 
         loss_evaluator = make_rpn_loss_evaluator(cfg, rpn_box_coder)
 

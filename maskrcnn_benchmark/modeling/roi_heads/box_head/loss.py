@@ -2,7 +2,7 @@
 import torch
 from torch.nn import functional as F
 
-from maskrcnn_benchmark.layers import smooth_l1_loss
+from maskrcnn_benchmark.layers import smooth_l1_loss, CrossEntropyLossSmooth
 from maskrcnn_benchmark.modeling.box_coder import BoxCoder
 from maskrcnn_benchmark.modeling.matcher import Matcher
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
@@ -35,10 +35,11 @@ class FastRCNNLossComputation(object):
         self.fg_bg_sampler = fg_bg_sampler
         self.box_coder = box_coder
         self.cls_agnostic_bbox_reg = cls_agnostic_bbox_reg
+        self.CrossEntropyLossSmooth = CrossEntropyLossSmooth()
 
     def match_targets_to_proposals(self, proposal, target):
         match_quality_matrix = boxlist_iou(target, proposal)
-        matched_idxs = self.proposal_matcher(match_quality_matrix)
+        matched_idxs, matched_vals = self.proposal_matcher(match_quality_matrix)
         # Fast RCNN only need "labels" field for selecting the targets
         target = target.copy_with_fields("labels")
         # get the targets corresponding GT for each proposal
@@ -47,10 +48,12 @@ class FastRCNNLossComputation(object):
         # out of bounds
         matched_targets = target[matched_idxs.clamp(min=0)]
         matched_targets.add_field("matched_idxs", matched_idxs)
+        matched_targets.add_field("matched_vals", matched_vals)
         return matched_targets
 
     def prepare_targets(self, proposals, targets):
         labels = []
+        ious = []
         regression_targets = []
         for proposals_per_image, targets_per_image in zip(proposals, targets):
             matched_targets = self.match_targets_to_proposals(
@@ -61,9 +64,13 @@ class FastRCNNLossComputation(object):
             labels_per_image = matched_targets.get_field("labels")
             labels_per_image = labels_per_image.to(dtype=torch.int64)
 
+            ious_per_image = matched_targets.get_field("matched_vals")
+            ious_per_image = ious_per_image.to(dtype=torch.float32)
+
             # Label background (below the low threshold)
             bg_inds = matched_idxs == Matcher.BELOW_LOW_THRESHOLD
             labels_per_image[bg_inds] = 0
+            ious_per_image[bg_inds] = 1
 
             # Label ignore proposals (between low and high thresholds)
             ignore_inds = matched_idxs == Matcher.BETWEEN_THRESHOLDS
@@ -75,9 +82,10 @@ class FastRCNNLossComputation(object):
             )
 
             labels.append(labels_per_image)
+            ious.append(ious_per_image)
             regression_targets.append(regression_targets_per_image)
 
-        return labels, regression_targets
+        return labels, ious, regression_targets
 
     def subsample(self, proposals, targets):
         """
@@ -90,15 +98,16 @@ class FastRCNNLossComputation(object):
             targets (list[BoxList])
         """
 
-        labels, regression_targets = self.prepare_targets(proposals, targets)
+        labels, ious, regression_targets = self.prepare_targets(proposals, targets)
         sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)
 
         proposals = list(proposals)
         # add corresponding label and regression_targets information to the bounding boxes
-        for labels_per_image, regression_targets_per_image, proposals_per_image in zip(
-            labels, regression_targets, proposals
+        for labels_per_image, ious_per_image, regression_targets_per_image, proposals_per_image in zip(
+            labels, ious, regression_targets, proposals
         ):
             proposals_per_image.add_field("labels", labels_per_image)
+            proposals_per_image.add_field("ious", ious_per_image)
             proposals_per_image.add_field(
                 "regression_targets", regression_targets_per_image
             )
@@ -139,11 +148,13 @@ class FastRCNNLossComputation(object):
         proposals = self._proposals
 
         labels = cat([proposal.get_field("labels") for proposal in proposals], dim=0)
+        ious = cat([proposal.get_field("ious") for proposal in proposals], dim=0)
         regression_targets = cat(
             [proposal.get_field("regression_targets") for proposal in proposals], dim=0
         )
 
-        classification_loss = F.cross_entropy(class_logits, labels)
+        # classification_loss = F.cross_entropy(class_logits, labels)
+        classification_loss = self.CrossEntropyLossSmooth(class_logits, labels, ious)
 
         # get indices that correspond to the regression targets for
         # the corresponding ground truth labels, to be used with

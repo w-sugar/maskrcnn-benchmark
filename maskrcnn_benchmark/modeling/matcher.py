@@ -78,7 +78,7 @@ class Matcher(object):
         if self.allow_low_quality_matches:
             self.set_low_quality_matches_(matches, all_matches, match_quality_matrix)
 
-        return matches
+        return matches, matched_vals
 
     def set_low_quality_matches_(self, matches, all_matches, match_quality_matrix):
         """

@@ -113,6 +113,7 @@ class Normalize3d(object):
         self.mean = mean
         self.std = std
         self.to_bgr255 = to_bgr255
+        # self.to_bgr255 = False
 
     def __call__(self, images, target=None):
         if self.to_bgr255:

@@ -70,7 +70,7 @@ class COCODataset_VIRAT(torchvision.datasets.coco.CocoDetection):
         self.id_to_img_map = {k: v for k, v in enumerate(self.ids)}
         self._transforms = transforms
         self.frame_number = 4
-        self.frame_interval = 8
+        self.frame_interval = 4
         self.img_format = 'frame_{:09d}.jpg'
         self.img_infos = self.load_annotations(ann_file)
 
