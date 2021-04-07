@@ -9,11 +9,11 @@ class DatasetCatalog(object):
     DATASETS = {
         "virat_ThreePart_train": {
             "img_dir": "virat/",
-            "ann_file": "coco_train_persononly_actionarea_two_category.json"
+            "ann_file": "coco_train_persononly_actionarea_three_category.json"
         },
         "virat_ThreePart_valid": {
             "img_dir": "virat/",
-            "ann_file": "coco_valid_persononly_actionarea_two_category.json"
+            "ann_file": "coco_valid_persononly_actionarea_three_category.json"
         },
         "coco_mmdet_train":{
             "img_dir": "coco/bt",

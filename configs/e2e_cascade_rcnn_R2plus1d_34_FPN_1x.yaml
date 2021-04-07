@@ -24,8 +24,9 @@ MODEL:
     POOLER_SCALES: (0.25, 0.125, 0.0625, 0.03125)
     POOLER_SAMPLING_RATIO: 2
     FEATURE_EXTRACTOR: "FPN2MLPFeatureExtractor"
-    PREDICTOR: "FPNPredictor"
+    PREDICTOR: "FPNPredictorCascade"
     NUM_CLASSES: 4
+    USE_CASCADE: True
 DATASETS:
   TRAIN: ("virat_ThreePart_train",)
   TEST: ("virat_ThreePart_valid",)
@@ -41,4 +42,4 @@ SOLVER:
   TEST_PERIOD: 5000
 TEST:
   IMS_PER_BATCH: 8
-OUTPUT_DIR: './outputs/faster_rcnn/R2plus1d/'
+OUTPUT_DIR: './outputs/cascade_rcnn/R2plus1d/'

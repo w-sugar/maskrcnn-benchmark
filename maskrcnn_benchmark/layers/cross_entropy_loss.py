@@ -8,7 +8,7 @@ class CrossEntropyLossSmooth(nn.Module):
 
     def forward(self, fc_out, label, target_value):
         target_value = target_value.unsqueeze(1)
-        one_hot_lable = torch.FloatTensor(fc_out.shape[0], 3).to(device=label.device)
+        one_hot_lable = torch.FloatTensor(fc_out.shape[0], fc_out.shape[1]).to(device=label.device)
         one_hot_lable.zero_()
         one_hot_lable.scatter_(1, torch.reshape(label, (fc_out.shape[0], 1)), target_value)
         loss = one_hot_lable * torch.softmax(fc_out, 1)

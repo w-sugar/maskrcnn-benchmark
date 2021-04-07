@@ -11,7 +11,7 @@ from maskrcnn_benchmark.structures.image_list import to_image_list
 from ..backbone import build_backbone
 from ..rpn.rpn import build_rpn
 from ..roi_heads.roi_heads import build_roi_heads
-
+from ..cascade_roi_heads.roi_heads import build_roi_cascadeheads
 
 class GeneralizedRCNN(nn.Module):
     """
@@ -28,7 +28,10 @@ class GeneralizedRCNN(nn.Module):
 
         self.backbone = build_backbone(cfg)
         self.rpn = build_rpn(cfg, self.backbone.out_channels)
-        self.roi_heads = build_roi_heads(cfg, self.backbone.out_channels)
+        if cfg.MODEL.ROI_BOX_HEAD.USE_CASCADE:
+            self.roi_heads = build_roi_cascadeheads(cfg, self.backbone.out_channels)
+        else:
+            self.roi_heads = build_roi_heads(cfg, self.backbone.out_channels)
 
     def forward(self, images, targets=None):
         """
