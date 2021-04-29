@@ -15,6 +15,14 @@ class DatasetCatalog(object):
             "img_dir": "virat/",
             "ann_file": "coco_valid_persononly_actionarea_three_category.json"
         },
+        "meva_TwoPart_train": {
+            "img_dir": "meva/",
+            "ann_file": "coco_train_personcar_actionarea_by_video.json"
+        },
+        "meva_TwoPart_valid": {
+            "img_dir": "meva/",
+            "ann_file": "coco_trainall_personcar_actionarea_by_video.json"
+        },
         "coco_mmdet_train":{
             "img_dir": "coco/bt",
             "ann_file": "coco/bt.json"
@@ -187,6 +195,17 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="COCODataset_VIRAT",
+                args=args
+            )
+        elif "meva" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                root=os.path.join(data_dir, attrs["img_dir"]),
+                ann_file=os.path.join(data_dir, attrs["ann_file"]),
+            )
+            return dict(
+                factory="COCODataset_MEVA",
                 args=args
             )
         elif "voc" in name:

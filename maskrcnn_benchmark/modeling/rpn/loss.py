@@ -9,7 +9,7 @@ from torch.nn import functional as F
 
 from .utils import concat_box_prediction_layers
 
-from ..balanced_positive_negative_sampler import BalancedPositiveNegativeSampler
+from ..balanced_positive_negative_sampler import BalancedPositiveNegativeSampler, WeightedPositiveSampler
 from ..utils import cat
 
 from maskrcnn_benchmark.layers import smooth_l1_loss
@@ -144,7 +144,10 @@ def make_rpn_loss_evaluator(cfg, box_coder):
         allow_low_quality_matches=True,
     )
 
-    fg_bg_sampler = BalancedPositiveNegativeSampler(
+    # fg_bg_sampler = BalancedPositiveNegativeSampler(
+    #     cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION
+    # )
+    fg_bg_sampler = WeightedPositiveSampler(
         cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION
     )
 

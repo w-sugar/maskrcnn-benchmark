@@ -2,7 +2,7 @@
 from torch import nn
 from torch.nn import functional as F
 
-from maskrcnn_benchmark.modeling.roi_heads.box_head.roi_box_feature_extractors import ResNet50Conv5ROIFeatureExtractor
+# from ..box_head.roi_box_feature_extractors import ResNet50Conv5ROIFeatureExtractor
 from maskrcnn_benchmark.modeling import registry
 from maskrcnn_benchmark.modeling.poolers import Pooler
 from maskrcnn_benchmark.modeling.make_layers import make_conv3x3

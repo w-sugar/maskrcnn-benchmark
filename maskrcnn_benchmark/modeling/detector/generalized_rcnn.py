@@ -12,6 +12,7 @@ from ..backbone import build_backbone
 from ..rpn.rpn import build_rpn
 from ..roi_heads.roi_heads import build_roi_heads
 from ..cascade_roi_heads.roi_heads import build_roi_cascadeheads
+from ..double_roi_heads.roi_heads import build_double_roi_heads
 
 class GeneralizedRCNN(nn.Module):
     """
@@ -30,6 +31,8 @@ class GeneralizedRCNN(nn.Module):
         self.rpn = build_rpn(cfg, self.backbone.out_channels)
         if cfg.MODEL.ROI_BOX_HEAD.USE_CASCADE:
             self.roi_heads = build_roi_cascadeheads(cfg, self.backbone.out_channels)
+        elif cfg.MODEL.ROI_BOX_HEAD.USE_DOUBLE:
+            self.roi_heads = build_double_roi_heads(cfg, self.backbone.out_channels)
         else:
             self.roi_heads = build_roi_heads(cfg, self.backbone.out_channels)
 

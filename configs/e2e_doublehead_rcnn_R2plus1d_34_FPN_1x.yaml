@@ -1,8 +1,9 @@
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   # WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
-  WEIGHT: "/home/sugar/workpace/r2plus1d_r34_32x2x1_180e_kinetics400_rgb_20200618-63462eb3.pth"
-  # WEIGHT: "/home/sugar/workpace/maskrcnn-benchmark/outputs/faster_rcnn/R2plus1d/model_0030000.pth"
+  WEIGHT: "/home/sugar/workspace/r2plus1d_r34_32x2x1_180e_kinetics400_rgb_20200618-63462eb3.pth"
+  # WEIGHT: "/home/sugar/workspace/maskrcnn-benchmark/outputs/cascade_rcnn/R2plus1d/model_0007500.pth"
+  CLS_AGNOSTIC_BBOX_REG: False
   BACKBONE:
     CONV_BODY: "r2plus1d-34-FPN"
   RESNETS:
@@ -23,10 +24,10 @@ MODEL:
     POOLER_RESOLUTION: 7
     POOLER_SCALES: (0.25, 0.125, 0.0625, 0.03125)
     POOLER_SAMPLING_RATIO: 2
-    FEATURE_EXTRACTOR: "FPN2MLPFeatureExtractor"
-    PREDICTOR: "FPNPredictorCascade"
+    FEATURE_EXTRACTOR: "FPNConvFCFeatureExtractor"
+    PREDICTOR: "FPNPredictorDouble"
     NUM_CLASSES: 4
-    USE_CASCADE: True
+    USE_DOUBLE: True
 DATASETS:
   TRAIN: ("virat_ThreePart_train",)
   TEST: ("virat_ThreePart_valid",)
@@ -36,10 +37,10 @@ DATALOADER:
 SOLVER:
   BASE_LR: 0.005 #0.02
   WEIGHT_DECAY: 0.0001
-  STEPS: (15000, 25000) #(60000, 80000)
-  MAX_ITER: 30000 #90000
-  IMS_PER_BATCH: 1
-  TEST_PERIOD: 5000
+  STEPS: (2500, 2750, 7500) #(60000, 80000)
+  MAX_ITER: 10000 #90000
+  IMS_PER_BATCH: 4
+  TEST_PERIOD: 1000
 TEST:
-  IMS_PER_BATCH: 8
-OUTPUT_DIR: './outputs/cascade_rcnn/R2plus1d/'
+  IMS_PER_BATCH: 16
+OUTPUT_DIR: './outputs/doublehead_rcnn/R2plus1d/'

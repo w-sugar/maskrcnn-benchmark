@@ -22,6 +22,8 @@ def evaluate(dataset, predictions, output_folder, **kwargs):
         return coco_evaluation(**args)
     elif isinstance(dataset, datasets.COCODataset_VIRAT):
         return coco_evaluation(**args)
+    elif isinstance(dataset, datasets.COCODataset_MEVA):
+        return coco_evaluation(**args)
     elif isinstance(dataset, datasets.PascalVOCDataset):
         return voc_evaluation(**args)
     # elif isinstance(dataset, datasets.AbstractDataset):

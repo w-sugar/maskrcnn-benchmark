@@ -5,12 +5,13 @@ from torch.nn import functional as F
 from maskrcnn_benchmark.layers import smooth_l1_loss, CrossEntropyLossSmooth
 from maskrcnn_benchmark.modeling.box_coder import BoxCoder
 from maskrcnn_benchmark.modeling.matcher import Matcher
-from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
+from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou, bbox_overlaps
 from maskrcnn_benchmark.modeling.balanced_positive_negative_sampler import (
-    BalancedPositiveNegativeSampler
+    BalancedPositiveNegativeSampler, WeightedPositiveSampler
 )
 from maskrcnn_benchmark.modeling.utils import cat
-
+from maskrcnn_benchmark.config import cfg
+from maskrcnn_benchmark.structures.bounding_box import BoxList
 
 class FastRCNNLossComputation(object):
     """
@@ -81,7 +82,7 @@ class FastRCNNLossComputation(object):
             # Label background (below the low threshold)
             bg_inds = matched_idxs == Matcher.BELOW_LOW_THRESHOLD
             labels_per_image[bg_inds] = 0
-            ious_per_image[bg_inds] = 1
+            ious_per_image[bg_inds] = 1 #1
 
             # Label ignore proposals (between low and high thresholds)
             ignore_inds = matched_idxs == Matcher.BETWEEN_THRESHOLDS
@@ -97,6 +98,51 @@ class FastRCNNLossComputation(object):
             regression_targets.append(regression_targets_per_image)
 
         return labels, ious, regression_targets
+
+    def prepare_iou_targets(self, proposals, box_regression, targets):
+        concat_boxes = torch.cat([a.bbox for a in proposals], dim=0)
+        boxes_per_image = [len(box) for box in proposals]
+        bbox_reg_weights = cfg.MODEL.ROI_HEADS.BBOX_REG_WEIGHTS
+        box_coder = BoxCoder(weights=bbox_reg_weights)
+
+        # [N, 4 * num_classes]
+        pred_boxes = box_coder.decode(
+            box_regression.view(sum(boxes_per_image), -1), concat_boxes
+        )
+        pred_boxes = pred_boxes.split(boxes_per_image, dim=0)
+
+        proposals = list(proposals)
+        device = box_regression.device
+        for pred_boxes_per_image, proposals_per_image, targets_per_image in zip(pred_boxes, proposals, targets):
+
+            # NOTE: Steps here may generate some wrong indices for box regression.
+            # However, these cases would be filtered in the loss by sampled_pos_inds_subset
+            labels_per_image = proposals_per_image.get_field("labels")
+            if self.cls_agnostic_bbox_reg:
+                labels = labels_per_image.new_zeros(labels_per_image.shape)
+                map_inds = 4 * labels[:, None] + torch.tensor([4, 5, 6, 7], device=device)
+            else:
+                map_inds = 4 * labels[:, None] + torch.tensor(
+                [0, 1, 2, 3], device=device)
+            # map_inds = 4 * labels_per_image[:, None] + torch.tensor([0, 1, 2, 3], device=device)
+            pred_boxes_per_image = torch.gather(pred_boxes_per_image, 1, map_inds)
+            if pred_boxes_per_image.shape[0] < 1:
+                matched_ious = proposals_per_image.get_field("ious")
+                proposals_per_image.add_field("iou_pred_targets_final", matched_ious)
+                continue
+
+            pred_boxlist_per_image = BoxList(pred_boxes_per_image, proposals_per_image.size, mode='xyxy')
+            # [target_num, pred_boxes_num]
+            match_quality_matrix = boxlist_iou(targets_per_image, pred_boxlist_per_image)
+            # [pred_boxes_num]
+            matched_ious, _ = match_quality_matrix.max(dim=0)
+            # matched_ious, matches = match_quality_matrix.max(dim=0)
+            # Assign candidate matches with low quality to negative (unassigned) values
+            sampled_neg_inds_subset = torch.nonzero(labels_per_image == 0).squeeze(1)
+            matched_ious[sampled_neg_inds_subset] = 1
+            proposals_per_image.add_field("iou_pred_targets_final", matched_ious)
+
+        return proposals
 
     def subsample(self, proposals, targets, stage=1):
         """
@@ -135,7 +181,7 @@ class FastRCNNLossComputation(object):
         self._proposals = proposals
         return proposals
 
-    def __call__(self, class_logits, box_regression):
+    def __call__(self, class_logits, box_regression, proposals, iou_pred=None, targets=None):
         """
         Computes the loss for Faster R-CNN.
         This requires that the subsample method has been called beforehand.
@@ -156,7 +202,7 @@ class FastRCNNLossComputation(object):
         if not hasattr(self, "_proposals"):
             raise RuntimeError("subsample needs to be called before")
 
-        proposals = self._proposals
+        # proposals = self._proposals
 
         labels = cat([proposal.get_field("labels") for proposal in proposals], dim=0)
         ious = cat([proposal.get_field("ious") for proposal in proposals], dim=0)
@@ -164,8 +210,9 @@ class FastRCNNLossComputation(object):
             [proposal.get_field("regression_targets") for proposal in proposals], dim=0
         )
 
-        # classification_loss = F.cross_entropy(class_logits, labels)
-        classification_loss = self.CrossEntropyLossSmooth(class_logits, labels, ious)
+        # weight_ce = torch.tensor([1, 2, 1.5, 1.5], device=labels.device).to(dtype=torch.float32)
+        classification_loss = F.cross_entropy(class_logits, labels)
+        # classification_loss = self.CrossEntropyLossSmooth(class_logits, labels, ious)
 
         # get indices that correspond to the regression targets for
         # the corresponding ground truth labels, to be used with
@@ -186,6 +233,50 @@ class FastRCNNLossComputation(object):
         )
         box_loss = box_loss / labels.numel()
 
+        if iou_pred:
+            iou_pred = cat(iou_pred, dim=0)
+        # iou_targets = ious.new_zeros(ious.shape)
+        # boxes_per_image = [len(box) for box in proposals]
+        # concat_boxes = torch.cat([a.bbox for a in proposals], dim=0)
+        # pos_decode_bbox_pred = self.box_coder.decode(
+        #     box_regression[sampled_pos_inds_subset[:, None], map_inds], concat_boxes[sampled_pos_inds_subset]
+        # )
+        # gt_bboxes = self.box_coder.decode(
+        #     regression_targets[sampled_pos_inds_subset], concat_boxes[sampled_pos_inds_subset]
+        # )
+        # iou_targets[sampled_pos_inds_subset] = bbox_overlaps(pos_decode_bbox_pred, gt_bboxes, is_aligned=True)
+        # iou_loss = F.binary_cross_entropy_with_logits(iou_pred.squeeze(), iou_targets.squeeze())
+        # iou_targets = ious.new_ones(ious.shape)
+        # boxes_per_image = [len(box) for box in proposals]
+        # concat_boxes = torch.cat([a.bbox for a in proposals], dim=0)
+        # pos_decode_bbox_pred = self.box_coder.decode(
+        #     box_regression[sampled_pos_inds_subset[:, None], map_inds], concat_boxes[sampled_pos_inds_subset]
+        # )
+        # gt_bboxes = self.box_coder.decode(
+        #     regression_targets[sampled_pos_inds_subset], concat_boxes[sampled_pos_inds_subset]
+        # )
+        # iou_targets[sampled_pos_inds_subset] = bbox_overlaps(pos_decode_bbox_pred, gt_bboxes, is_aligned=True)
+            proposals = self.prepare_iou_targets(proposals, box_regression, targets)
+            iou_pred_targets = cat([proposal.get_field("iou_pred_targets_final") for proposal in proposals], dim=0)
+            iou_loss = self.CrossEntropyLossSmooth(iou_pred, labels, iou_pred_targets)
+            # one_hot_lable = torch.FloatTensor(iou_pred.shape[0], iou_pred.shape[1]).to(device=labels.device)
+            # print('a',iou_pred_targets)
+            # print('b',iou_pred)
+            # one_hot_lable.zero_()
+            # one_hot_lable.scatter_(1, torch.reshape(labels, (class_logits.shape[0], 1)), iou_pred)
+            # print('c',one_hot_lable)
+            # iou_loss = smooth_l1_loss(
+            #     iou_pred[sampled_pos_inds_subset, labels_pos][:, None], # if cls-aware
+            #     iou_pred_targets[sampled_pos_inds_subset][:, None],
+            #     size_average=False,
+            #     beta=1,
+            # )
+            # iou_loss = iou_loss / labels_pos.numel()
+        # one_hot_lable = torch.FloatTensor(class_logits.shape[0], class_logits.shape[1]).to(device=labels.device)
+        # one_hot_lable.zero_()
+        # one_hot_lable.scatter_(1, torch.reshape(labels, (class_logits.shape[0], 1)), ious.unsqueeze(1))
+        # iou_loss = smooth_l1_loss(iou_pred, one_hot_lable,size_average=True, beta=1)
+            return classification_loss, box_loss, iou_loss
         return classification_loss, box_loss
 
 
@@ -209,8 +300,11 @@ def make_roi_box_loss_evaluator(cfg):
     bbox_reg_weights = cfg.MODEL.ROI_HEADS.BBOX_REG_WEIGHTS
     box_coder = BoxCoder(weights=bbox_reg_weights)
 
-    fg_bg_sampler = BalancedPositiveNegativeSampler(
-        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
+    # fg_bg_sampler = BalancedPositiveNegativeSampler(
+    #     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
+    # )
+    fg_bg_sampler = WeightedPositiveSampler(
+        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION 
     )
 
     cls_agnostic_bbox_reg = cfg.MODEL.CLS_AGNOSTIC_BBOX_REG

@@ -11,7 +11,8 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 from maskrcnn_benchmark.structures.keypoint import PersonKeypoints
 from maskrcnn_benchmark.config import cfg
-
+import sys  # 导入sys模块
+sys.setrecursionlimit(3000)  # 将默认的递归深度修改为3000
 min_keypoints_per_image = 10
 
 
@@ -41,11 +42,11 @@ def has_valid_annotation(anno):
     return False
 
 
-class COCODataset_VIRAT(torchvision.datasets.coco.CocoDetection):
+class COCODataset_MEVA(torchvision.datasets.coco.CocoDetection):
     def __init__(
         self, ann_file, root, remove_images_without_annotations, transforms=None
     ):
-        super(COCODataset_VIRAT, self).__init__(root, ann_file)
+        super(COCODataset_MEVA, self).__init__(root, ann_file)
         # sort indices for reproducible results
         self.ids = sorted(self.ids)
 
@@ -84,14 +85,14 @@ class COCODataset_VIRAT(torchvision.datasets.coco.CocoDetection):
                 valid_inds.append(i)
         return valid_inds
 
-    def my_path(self, frame_id):
-        read_format = os.path.join(self.root, video_name, img_format)
+    def my_path(self, first_id, video_name):
+        read_format = os.path.join(self.root, video_name, self.img_format)
         if not os.path.exists(read_format.format(first_id)):
             if first_id == 0:
                 first_id += 1
             else:
                 first_id -= 1
-            return self.my_path(first_id)
+            return self.my_path(first_id, video_name)
         else:
             return first_id
     def __getitem__(self, idx):
@@ -106,7 +107,7 @@ class COCODataset_VIRAT(torchvision.datasets.coco.CocoDetection):
         gt_labels = anno['labels']
         read_format = os.path.join(self.root, video_name, img_format)
         if not os.path.exists(read_format.format(first_id)):
-            first_id = self.my_path(first_id)
+            first_id = self.my_path(first_id, video_name)
         img = Image.open(read_format.format(first_id)).convert("RGB")
         images = [img]
         for i in range(1, self.frame_number):

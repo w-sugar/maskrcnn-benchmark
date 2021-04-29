@@ -73,6 +73,8 @@ _C.DATASETS.TRAIN = ()
 # List of the dataset names for testing, as present in paths_catalog.py
 _C.DATASETS.TEST = ()
 _C.DATASETS.TRANSTYPE = 'transforms2d'
+_C.DATASETS.FRAME_NUMBER = 4
+_C.DATASETS.FRAME_INTERVAL = 4
 
 # -----------------------------------------------------------------------------
 # DataLoader
@@ -224,8 +226,11 @@ _C.MODEL.ROI_BOX_HEAD.USE_GN = False
 _C.MODEL.ROI_BOX_HEAD.DILATION = 1
 _C.MODEL.ROI_BOX_HEAD.CONV_HEAD_DIM = 256
 _C.MODEL.ROI_BOX_HEAD.NUM_STACKED_CONVS = 4
+# iou_pred
+_C.MODEL.ROI_BOX_HEAD.IOU_PRED = False
 # Cascade
 _C.MODEL.ROI_BOX_HEAD.USE_CASCADE = False
+_C.MODEL.ROI_BOX_HEAD.USE_DOUBLE = False
 
 
 _C.MODEL.ROI_MASK_HEAD = CN()

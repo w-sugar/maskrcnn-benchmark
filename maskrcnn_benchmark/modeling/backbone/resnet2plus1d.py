@@ -1,5 +1,6 @@
 from .resnet3d import ResNet3d
 import torch.nn as nn
+from maskrcnn_benchmark.config import cfg
 
 class ResNet2Plus1d(ResNet3d):
     """ResNet (2+1)d backbone.
@@ -12,9 +13,17 @@ class ResNet2Plus1d(ResNet3d):
         assert self.pretrained2d is False
         assert self.conv_cfg['type'] == 'Conv2plus1d'
         self.lateral_convs = nn.ModuleList()
-        in_channels = [64, 128]
-        temporal_strides = [4, 2]
-        for i in range(2):
+        if cfg.DATASETS.FRAME_NUMBER == 4:
+            in_channels = [64, 128]
+            # out_channels = [256, 512, 1024, 2048]
+            temporal_strides = [4, 2]
+            self.conv_num = 2
+        else:
+            in_channels = [64, 128, 256]
+            # out_channels = [256, 512, 1024, 2048]
+            temporal_strides = [8, 4, 2]
+            self.conv_num = 3
+        for i in range(self.conv_num):
             l_conv = nn.Conv3d(
                 in_channels[i],
                 in_channels[i],
@@ -25,6 +34,7 @@ class ResNet2Plus1d(ResNet3d):
                 groups=1,
                 bias=True)
             self.lateral_convs.append(l_conv)
+        self.relu = nn.ReLU(inplace=True)
 
     def _freeze_stages(self):
         """Prevent all the parameters from being optimized before
@@ -61,8 +71,10 @@ class ResNet2Plus1d(ResNet3d):
 
         result = []
         for idx, feat in enumerate(output):
-            if idx < 2:
+            # print(feat.shape)
+            if idx < self.conv_num:
                 feat = self.lateral_convs[idx](feat)
+                feat = self.relu(feat)
             feat = feat.squeeze(2)
             result.append(feat)
             
