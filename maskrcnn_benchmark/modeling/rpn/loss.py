@@ -144,12 +144,12 @@ def make_rpn_loss_evaluator(cfg, box_coder):
         allow_low_quality_matches=True,
     )
 
-    # fg_bg_sampler = BalancedPositiveNegativeSampler(
-    #     cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION
-    # )
-    fg_bg_sampler = WeightedPositiveSampler(
+    fg_bg_sampler = BalancedPositiveNegativeSampler(
         cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION
     )
+    # fg_bg_sampler = WeightedPositiveSampler(
+    #     cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION
+    # )
 
     loss_evaluator = RPNLossComputation(
         matcher,

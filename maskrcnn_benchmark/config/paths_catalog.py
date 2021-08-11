@@ -17,19 +17,19 @@ class DatasetCatalog(object):
         },
         "meva_TwoPart_train": {
             "img_dir": "meva/",
-            "ann_file": "coco_train_personcar_actionarea_by_video.json"
+            "ann_file": "coco_train_personcar_actionarea_by_video_20and21.json"
         },
         "meva_TwoPart_valid": {
             "img_dir": "meva/",
-            "ann_file": "coco_trainall_personcar_actionarea_by_video.json"
+            "ann_file": "coco_valid_personcar_actionarea_by_video.json"
         },
-        "coco_mmdet_train":{
-            "img_dir": "coco/bt",
-            "ann_file": "coco/bt.json"
+        "coco_visdrone_train":{
+            "img_dir": "VisDrone/VisDrone2019-DET-train/images",
+            "ann_file": "visdrone/coco-train.json"
         },
-        "coco_mmdet_val":{
-            "img_dir": "coco/bt",
-            "ann_file": "coco/bt.json"
+        "coco_visdrone_valid":{
+            "img_dir": "VisDrone/VisDrone2019-DET-val/images",
+            "ann_file": "visdrone/coco-val.json"
         },
         "coco_2017_train": {
             "img_dir": "coco/train2017",

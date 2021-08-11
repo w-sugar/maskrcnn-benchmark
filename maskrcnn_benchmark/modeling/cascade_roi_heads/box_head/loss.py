@@ -300,12 +300,12 @@ def make_roi_box_loss_evaluator(cfg):
     bbox_reg_weights = cfg.MODEL.ROI_HEADS.BBOX_REG_WEIGHTS
     box_coder = BoxCoder(weights=bbox_reg_weights)
 
-    # fg_bg_sampler = BalancedPositiveNegativeSampler(
-    #     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
-    # )
-    fg_bg_sampler = WeightedPositiveSampler(
-        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION 
+    fg_bg_sampler = BalancedPositiveNegativeSampler(
+        cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION
     )
+    # fg_bg_sampler = WeightedPositiveSampler(
+    #     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE, cfg.MODEL.ROI_HEADS.POSITIVE_FRACTION 
+    # )
 
     cls_agnostic_bbox_reg = cfg.MODEL.CLS_AGNOSTIC_BBOX_REG
 

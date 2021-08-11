@@ -34,5 +34,5 @@ if __name__ == '__main__':
     ])
     weight_ce = torch.tensor([100, 22, 10]).to(dtype=torch.float32)
     loss1 = CrossEntropyLossSmooth()
-    print(F.cross_entropy(fc_out, lable, weight_ce))
-    print(loss1(fc_out, lable, target_value, weight_ce))
+    print(F.cross_entropy(fc_out, lable))
+    print(loss1(fc_out, lable, target_value))
